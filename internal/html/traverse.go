@@ -6,11 +6,10 @@ import (
 
 // traverse img
 func TraverseNodeAttr(node *html.Node, attrArray []string, nodeTag string, nodeAttr string) []string {
-	if node.Type == html.ElementNode && node.Data == "img" {
+	if node.Type == html.ElementNode && node.Data == nodeTag {
 		for _, img := range node.Attr {
-			if img.Key == "src" {
+			if img.Key == nodeAttr {
 				attrArray = append(attrArray, img.Val)
-				// fmt.Println(img.Val)
 			}
 		}
 	}
