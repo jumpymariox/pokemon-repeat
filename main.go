@@ -7,11 +7,14 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	selector "reptile/internal/html"
+
 	"golang.org/x/net/html"
 )
 
 func main() {
-	urlArray := [1]string{"https://pokedex.org/1"}
+	urlArray := [1]string{"https://wallpaperscraft.com/tag/cat/1920x1080/"}
 	for _, url := range urlArray {
 		fetch(url)
 	}
@@ -19,7 +22,7 @@ func main() {
 
 func fetch(url string) {
 	if !checkURL(url) {
-		fmt.Println("url is invalid",url)
+		fmt.Println("url is invalid", url)
 		os.Exit(1)
 	}
 
@@ -43,5 +46,8 @@ func parseHTML(url string, body io.Reader) {
 	if err != nil {
 		fmt.Errorf("parsing %s as HTML: %v\n ", url, err)
 	}
-	fmt.Println(doc)
+
+	imgArray := []string{}
+	imgArray = selector.TraverseNodeAttr(doc, imgArray, "img", "src")
+	fmt.Print(imgArray)
 }
