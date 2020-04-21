@@ -5,9 +5,11 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
+	check "reptile/internal/errorcheck"
 	file "reptile/internal/file"
 	selector "reptile/internal/html"
 
@@ -15,41 +17,70 @@ import (
 )
 
 func main() {
-	urlArray := [1]string{"https://wallpaperscraft.com/tag/cat/1920x1080/"}
-	for _, url := range urlArray {
-		fetch(url)
+	webURLArray := [1]string{"https://wallpaperscraft.com/tag/cat/1920x1080/"}
+	for _, webURL := range webURLArray {
+		fetch(webURL)
 	}
 }
 
-func fetch(url string) {
-	if !checkURL(url) {
-		fmt.Println("url is invalid", url)
+func fetch(webURL string) {
+	if !checkURL(webURL) {
+		fmt.Println("url is invalid", webURL)
 		os.Exit(1)
 	}
 
-	res, err := http.Get(url)
+	res, err := http.Get(webURL)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR fetch request %s:%v\n", url, err)
+		fmt.Fprintf(os.Stderr, "ERROR fetch request %s:%v\n", webURL, err)
 		os.Exit(1)
 	}
 	defer res.Body.Close()
 	defer io.Copy(ioutil.Discard, res.Body)
 
-	file.Create(res.Body, "output", "test.html")
-	parseHTML(url, res.Body)
+	parseHTML(webURL, res.Body)
 }
 
 func checkURL(str string) bool {
 	return strings.HasPrefix(str, "https")
 }
 
-func parseHTML(url string, body io.Reader) {
+func parseHTML(webURL string, body io.Reader) {
 	doc, err := html.Parse(body)
 	if err != nil {
-		fmt.Errorf("parsing %s as HTML: %v\n ", url, err)
+		fmt.Errorf("parsing %s as HTML: %v\n ", webURL, err)
 	}
 
 	imgArray := []string{}
 	imgArray = selector.TraverseNodeAttr(doc, imgArray, "img", "src")
 
+	fmt.Println(imgArray)
+
+	for _, imgURL := range imgArray {
+		if !checkURL(imgURL) {
+			fmt.Println("url is invalid", imgURL)
+			continue
+		}
+
+		res, err := http.Get(imgURL)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR fetch request %s:%v\n", imgURL, err)
+			os.Exit(1)
+		}
+		defer res.Body.Close()
+		defer io.Copy(ioutil.Discard, res.Body)
+
+		fileName := parseFileName(imgURL)
+		file.Create(res.Body, "output", fileName)
+	}
+}
+
+func parseFileName(fileURL string) string {
+	parsedURL, err := url.Parse(fileURL)
+	check.Panic(err)
+
+	path := parsedURL.Path
+	segments := strings.Split(path, "/")
+
+	fileName := segments[len(segments)-1]
+	return fileName
 }
