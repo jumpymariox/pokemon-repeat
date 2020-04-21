@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	file "reptile/internal/file"
 	selector "reptile/internal/html"
 
 	"golang.org/x/net/html"
@@ -34,6 +35,7 @@ func fetch(url string) {
 	defer res.Body.Close()
 	defer io.Copy(ioutil.Discard, res.Body)
 
+	file.Create(res.Body, "output", "test.html")
 	parseHTML(url, res.Body)
 }
 
@@ -49,5 +51,5 @@ func parseHTML(url string, body io.Reader) {
 
 	imgArray := []string{}
 	imgArray = selector.TraverseNodeAttr(doc, imgArray, "img", "src")
-	fmt.Print(imgArray)
+
 }
