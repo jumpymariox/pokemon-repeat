@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,11 +20,12 @@ import (
 func main() {
 	webURLArray := [1]string{"https://wallpaperscraft.com/tag/cat/1920x1080/"}
 	for _, webURL := range webURLArray {
-		fetch(webURL)
+		resBody := fetch(webURL)
+		parseHTML(webURL, resBody)
 	}
 }
 
-func fetch(webURL string) {
+func fetch(webURL string) io.Reader {
 	if !checkURL(webURL) {
 		fmt.Println("url is invalid", webURL)
 		os.Exit(1)
@@ -37,7 +39,10 @@ func fetch(webURL string) {
 	defer res.Body.Close()
 	defer io.Copy(ioutil.Discard, res.Body)
 
-	parseHTML(webURL, res.Body)
+	bodyBytes, err := ioutil.ReadAll(res.Body)
+	check.Panic(err)
+
+	return bytes.NewReader(bodyBytes)
 }
 
 func checkURL(str string) bool {
@@ -52,8 +57,6 @@ func parseHTML(webURL string, body io.Reader) {
 
 	imgArray := []string{}
 	imgArray = selector.TraverseNodeAttr(doc, imgArray, "img", "src")
-
-	fmt.Println(imgArray)
 
 	for _, imgURL := range imgArray {
 		if !checkURL(imgURL) {
