@@ -9,21 +9,24 @@ import (
 	file "reptile/internal/file"
 	traverse "reptile/internal/html"
 	http "reptile/internal/http"
-	url "reptile/internal/url"
+	"reptile/internal/url"
 
 	"golang.org/x/net/html"
 )
 
+const target = "https://wallpaperscraft.com"
+
 func main() {
-	webURLArray := [1]string{"https://wallpaperscraft.com/tag/cat/1920x1080/"}
-	for _, webURL := range webURLArray {
-		resBody, err := http.Fetch(webURL)
+	queryFields := os.Args[1:]
+	for _, field := range queryFields {
+		targetURL := target + "/search/?query=" + field
+		resBody, err := http.Fetch(targetURL)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "request connect fail, url: %s\n: %v\n", webURL, err)
+			fmt.Fprintf(os.Stderr, "request connect fail, url: %s\n: %v\n", field, err)
 		} else {
 			defer io.Copy(ioutil.Discard, resBody)
 
-			parseHTML(webURL, resBody)
+			parseHTML(targetURL, resBody)
 		}
 	}
 }
