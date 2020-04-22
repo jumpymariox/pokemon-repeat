@@ -1,4 +1,4 @@
-package selector
+package traverse
 
 import (
 	"golang.org/x/net/html"
