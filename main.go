@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/url"
-	"strings"
+	"os"
 
 	file "reptile/internal/file"
 	traverse "reptile/internal/html"
 	http "reptile/internal/http"
+	url "reptile/internal/url"
 
 	"golang.org/x/net/html"
 )
@@ -19,7 +19,7 @@ func main() {
 	for _, webURL := range webURLArray {
 		resBody, err := http.Fetch(webURL)
 		if err != nil {
-			fmt.Println("request connect fail, url:" + webURL)
+			fmt.Fprintf(os.Stderr, "request connect fail, url: %s\n: %v\n", webURL, err)
 		} else {
 			defer io.Copy(ioutil.Discard, resBody)
 
@@ -40,25 +40,15 @@ func parseHTML(webURL string, body io.Reader) {
 	for _, imgURL := range imgArray {
 		resBody, err := http.Fetch(imgURL)
 		if err != nil {
-			fmt.Println("download img fail, url:" + webURL)
+			fmt.Fprintf(os.Stderr, "download img fail, %s\n: %v\n", webURL, err)
 		} else {
 			defer io.Copy(ioutil.Discard, resBody)
 
-			fileName := parseFileName(imgURL)
+			fileName, err := url.ParseFileName(imgURL)
+			if err != nil {
+				continue
+			}
 			file.Create(resBody, "output", fileName)
 		}
 	}
-}
-
-func parseFileName(fileURL string) (string, error) {
-	parsedURL, err := url.Parse(fileURL)
-	if err != nil {
-		return nil, err
-	}
-
-	path := parsedURL.Path
-	segments := strings.Split(path, "/")
-
-	fileName := segments[len(segments)-1]
-	return fileName, nil
 }
