@@ -7,10 +7,9 @@ import (
 	"net/url"
 	"strings"
 
-	check "reptile/internal/errorcheck"
 	file "reptile/internal/file"
 	traverse "reptile/internal/html"
-	"reptile/internal/http"
+	http "reptile/internal/http"
 
 	"golang.org/x/net/html"
 )
@@ -51,13 +50,15 @@ func parseHTML(webURL string, body io.Reader) {
 	}
 }
 
-func parseFileName(fileURL string) string {
+func parseFileName(fileURL string) (string, error) {
 	parsedURL, err := url.Parse(fileURL)
-	check.Panic(err)
+	if err != nil {
+		return nil, err
+	}
 
 	path := parsedURL.Path
 	segments := strings.Split(path, "/")
 
 	fileName := segments[len(segments)-1]
-	return fileName
+	return fileName, nil
 }

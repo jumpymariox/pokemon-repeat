@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	check "reptile/internal/errorcheck"
 	"strings"
 )
 
@@ -26,9 +25,8 @@ func Fetch(webURL string) (io.Reader, error) {
 	defer io.Copy(ioutil.Discard, res.Body)
 
 	bodyBytes, err := ioutil.ReadAll(res.Body)
-	check.Panic(err)
 
-	return bytes.NewReader(bodyBytes), nil
+	return bytes.NewReader(bodyBytes), err
 }
 
 func checkURL(str string) bool {
