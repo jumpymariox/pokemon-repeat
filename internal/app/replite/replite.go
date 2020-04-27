@@ -8,6 +8,7 @@ import (
 	"reptile/internal/tool/html"
 	"reptile/internal/tool/url"
 	"strings"
+	"sync"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -27,7 +28,7 @@ func Replite() {
 	go collectDownloadURL(imagePageURLChan, downloadURLChan)
 	go downloadURL(downloadURLChan, done)
 
-	<-done
+	complete(done, [](chan string){imagePageURLChan, downloadURLChan})
 }
 
 func collectPageURL(urlChan chan<- string, queryFields []string) {
@@ -82,18 +83,39 @@ func downloadURL(downloadURLChan <-chan string, done chan<- bool) {
 		fmt.Println("download all complete")
 		done <- true
 	}()
+
+	var wg sync.WaitGroup
 	for downloadURL := range downloadURLChan {
-		resp, err := client.Fetch(downloadURL)
+		wg.Add(1)
+		go download(downloadURL, &wg)
+	}
+	wg.Wait()
+}
+
+func download(downloadURL string, wg *sync.WaitGroup) {
+	fmt.Println("downloading img, please wait...", downloadURL)
+	resp, err := client.Fetch(downloadURL)
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "download img fail, %s\n: %v\n", downloadURL, err)
+	} else {
 		defer func() {
-			fmt.Sprintf("resp: %v/n", resp)
 			resp.Body.Close()
 		}()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "download img fail, %s\n: %v\n", downloadURL, err)
-		} else {
-			fmt.Println("download img success", downloadURL)
-			fileName, _ := url.ParseFileName(downloadURL)
-			file.Create(resp.Body, "output/", fileName)
+		fmt.Println("download img success", downloadURL)
+		fileName, _ := url.ParseFileName(downloadURL)
+		file.Create(resp.Body, "output/", fileName)
+	}
+
+	wg.Done()
+}
+
+func complete(done <-chan bool, cArray [](chan string)) {
+	<-done
+	for _, c := range cArray {
+		_, ok := <-c
+		if ok {
+			close(c)
 		}
 	}
 }
