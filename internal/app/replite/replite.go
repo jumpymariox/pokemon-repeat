@@ -8,7 +8,6 @@ import (
 	"reptile/internal/tool/html"
 	"reptile/internal/tool/url"
 	"strings"
-	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -19,18 +18,24 @@ func Replite() {
 
 	// queryFields := os.Args[1:]
 
-	queryFields := []string{"cat", "dog"}
+	queryFields := []string{"cat"}
 	imagePageURLChan := make(chan string, 30)
 	downloadURLChan := make(chan string, 30)
+	done := make(chan bool)
 
 	go collectPageURL(imagePageURLChan, queryFields)
 	go collectDownloadURL(imagePageURLChan, downloadURLChan)
-	go downloadURL(downloadURLChan)
+	go downloadURL(downloadURLChan, done)
 
-	time.Sleep(30e9)
+	<-done
 }
 
-func collectPageURL(urlChan chan string, queryFields []string) {
+func collectPageURL(urlChan chan<- string, queryFields []string) {
+	defer func() {
+		close(urlChan)
+		fmt.Println("collect page url complete")
+	}()
+
 	for _, field := range queryFields {
 		targetURL := target + "/search/?query=" + field
 
@@ -51,9 +56,13 @@ func collectPageURL(urlChan chan string, queryFields []string) {
 	}
 }
 
-func collectDownloadURL(urlChan chan string, collectChan chan string) {
-	for {
-		resp, err := client.Fetch(<-urlChan)
+func collectDownloadURL(urlChan <-chan string, collectChan chan<- string) {
+	defer func() {
+		close(collectChan)
+		fmt.Println("collect download url complete")
+	}()
+	for url := range urlChan {
+		resp, err := client.Fetch(url)
 		defer resp.Body.Close()
 		if err != nil {
 			continue
@@ -68,13 +77,18 @@ func collectDownloadURL(urlChan chan string, collectChan chan string) {
 	}
 }
 
-func downloadURL(downloadURLChan chan string) {
-	for {
-		downloadURL := <-downloadURLChan
+func downloadURL(downloadURLChan <-chan string, done chan<- bool) {
+	defer func() {
+		fmt.Println("download all complete")
+		done <- true
+	}()
+	for downloadURL := range downloadURLChan {
 		resp, err := client.Fetch(downloadURL)
-		defer resp.Body.Close()
+		defer func() {
+			fmt.Sprintf("resp: %v/n", resp)
+			resp.Body.Close()
+		}()
 		if err != nil {
-			fmt.Println("download img fail", downloadURL)
 			fmt.Fprintf(os.Stderr, "download img fail, %s\n: %v\n", downloadURL, err)
 		} else {
 			fmt.Println("download img success", downloadURL)
